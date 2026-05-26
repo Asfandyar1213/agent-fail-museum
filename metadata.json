@@ -1,0 +1,6 @@
+{
+  "name": "Agent Fail Museum",
+  "description": "A public archive of AI agent failure patterns submitted by real builders. Curated by Stonepath Labs.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

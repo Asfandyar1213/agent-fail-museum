@@ -1,0 +1,332 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: 'Outfit', ui-sans-serif, system-ui, sans-serif;
+  --font-serif: 'Fraunces', ui-serif, Cambria, Georgia, serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+}
+
+:root {
+  /* Backgrounds */
+  --bg-0: #000000;       /* true black: hero, nav */
+  --bg-1: #0a0a0a;       /* page background */
+  --bg-2: #111111;       /* card backgrounds */
+  --bg-3: #1a1a1a;       /* elevated surfaces, hover states */
+  --bg-4: #222222;       /* borders, dividers */
+
+  /* Text */
+  --text-0: #ffffff;     /* primary text: pure white, used sparingly */
+  --text-1: #f5f5f5;     /* main readable text */
+  --text-2: #a3a3a3;     /* secondary text */
+  --text-3: #666666;     /* muted text, labels */
+  --text-4: #3a3a3a;     /* very muted, almost invisible */
+
+  /* Accent: ONE accent, used in exactly 5 places */
+  --accent: #ffffff;              /* primary accent = white glow */
+  --accent-sub: rgba(255, 255, 255, 0.12); /* subtle glow background */
+  --accent-dim: rgba(255, 255, 255, 0.08); /* hover glow on cards */
+}
+
+/* Global scroll styling and body setup */
+html {
+  scroll-behavior: smooth;
+  background-color: var(--bg-1);
+  color: var(--text-1);
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: var(--bg-1);
+  background-image: 
+    radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.01) 0%, transparent 60%);
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Custom noise grain overlay for physical analog feel (Rule 11) */
+.noise-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  content: "";
+  opacity: 0.018; /* Apple opacity level */
+  pointer-events: none;
+  z-index: 9999;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+}
+
+/* Custom Scrollbar for premium aesthetic */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg-0);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--bg-4);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-3);
+}
+
+/* Typography scale and rules defined in Brand Identity directions */
+.text-hero {
+  font-size: clamp(56px, 8vw, 112px);
+  font-weight: 300;
+  letter-spacing: -0.03em;
+  line-height: 1.03;
+}
+
+.text-display {
+  font-size: clamp(38px, 5vw, 72px);
+  font-weight: 300;
+  letter-spacing: -0.02em;
+  line-height: 1.06;
+}
+
+.text-title {
+  font-size: clamp(22px, 2.5vw, 36px);
+  font-weight: 300;
+  line-height: 1.25;
+}
+
+.text-body-custom {
+  font-size: clamp(15px, 1.4vw, 18px);
+  font-weight: 400;
+  letter-spacing: 0em;
+  line-height: 1.75;
+}
+
+/* Reveal transition classes (Rule 3) */
+.reveal {
+  opacity: 0;
+  transform: translateY(24px);
+  transition: opacity 0.9s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.9s cubic-bezier(0.16, 1, 0.3, 1);
+  transition-delay: var(--delay, 0ms);
+}
+.reveal.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Staggered Word Reveal for the Hero Headline (Rule 5) */
+.word-reveal {
+  display: inline-block;
+  opacity: 0;
+  transform: translateY(14px);
+  transition: opacity 0.9s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.9s cubic-bezier(0.16, 1, 0.3, 1);
+  transition-delay: var(--word-delay, 0ms);
+}
+.word-reveal.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Horizontal animatable separating line rules (Rule 6) */
+.rule {
+  width: 0%;
+  height: 1px;
+  background: var(--bg-4);
+  transition: width 1.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.rule.visible {
+  width: 100%;
+}
+
+/* Interactive Card Hover transition (Rule 7) */
+.case-card {
+  transition: transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+              border-color 0.3s ease,
+              box-shadow 0.3s ease;
+}
+.case-card:hover {
+  transform: translateY(-4px);
+  border-color: rgba(255, 255, 255, 0.2);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6), 
+              0 0 0 1px rgba(255, 255, 255, 0.1);
+}
+
+/* Custom interactive custom toggle (not a standard checkbox) */
+.toggle-switch {
+  position: relative;
+  display: inline-block;
+  width: 44px;
+  height: 24px;
+}
+.toggle-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: var(--bg-2);
+  border: 1px solid var(--bg-4);
+  transition: .3s cubic-bezier(0.16, 1, 0.3, 1);
+  border-radius: 24px;
+}
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 14px;
+  width: 14px;
+  left: 4px;
+  bottom: 4px;
+  background-color: var(--text-3);
+  transition: .3s cubic-bezier(0.16, 1, 0.3, 1);
+  border-radius: 50%;
+}
+input:checked + .slider {
+  background-color: var(--accent-sub);
+  border-color: var(--text-2);
+}
+input:checked + .slider:before {
+  transform: translateX(20px);
+  background-color: var(--text-0);
+}
+
+/* Custom select panel items */
+.custom-dropdown-panel {
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.8);
+}
+
+/* Scroll line pulse animation (Rule 1) */
+@keyframes pulseLine {
+  0%, 100% { height: 32px; }
+  50% { height: 48px; }
+}
+.pulse-scroll-line {
+  animation: pulseLine 2s infinite ease-in-out;
+}
+
+/* Premium Search Experience CSS Styles */
+.search-container {
+  position: relative;
+  width: 240px;
+  transition: width 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.search-container.active {
+  width: 320px;
+}
+
+.search-input {
+  width: 100%;
+  background: var(--bg-2);
+  border: 1px solid var(--bg-4);
+  border-radius: 2px;
+  padding: 8px 16px 8px 36px;
+  color: var(--text-1);
+  font-family: 'Outfit', sans-serif;
+  font-size: 14px;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.search-input:focus {
+  border-color: rgba(255, 255, 255, 0.34);
+  box-shadow: 0 0 12px 2px rgba(255, 255, 255, 0.05), 
+              0 0 0 3px rgba(255, 255, 255, 0.03);
+  outline: none;
+}
+
+/* Dropdown style matching specifications */
+.search-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  right: 0;
+  background: var(--bg-2);
+  border: 1px solid var(--bg-4);
+  border-radius: 2px;
+  max-height: 380px;
+  overflow-y: auto;
+  z-index: 1001;
+  opacity: 0;
+  transform: translateY(-8px);
+  transition: opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1), 
+              transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  pointer-events: none;
+}
+
+.search-dropdown.visible {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.search-result {
+  padding: 12px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.search-result:hover, .search-result.active-key {
+  background: var(--bg-3);
+}
+
+.search-result:last-child {
+  border-bottom: none;
+}
+
+/* Stagger results with Rule 13 precision */
+.search-result-animated {
+  opacity: 0;
+  transform: translateY(8px);
+  animation: searchResultFadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation-delay: var(--result-delay, 0ms);
+}
+
+@keyframes searchResultFadeIn {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Custom highlighted text inside results */
+.highlight-text {
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--text-0);
+  padding: 0px 2px;
+  border-radius: 1px;
+}
+
+/* Temporary highlight animation for case card selection */
+@keyframes cardFlashGlow {
+  0% {
+    border-color: rgba(255, 255, 255, 0.85);
+    box-shadow: 0 0 30px 4px rgba(255, 255, 255, 0.25);
+  }
+  100% {
+    border-color: var(--bg-4);
+    box-shadow: none;
+  }
+}
+.case-card-flash {
+  animation: cardFlashGlow 2.2s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+}
+
+@keyframes caseBadgeScale {
+  0% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.12); opacity: 0.9; }
+  100% { transform: scale(1); opacity: 1; }
+}
+.case-badge-scale-anim {
+  animation: caseBadgeScale 0.45s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+}
+
