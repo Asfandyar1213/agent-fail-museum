@@ -4,17 +4,22 @@
  */
 
 export interface FailureCase {
-  id: string; // e.g. "01"
+  id: string;
   title: string;
   whatChanged: string;
   whatBroke: string;
   whyItMatters: string;
+  risk: string;
+  severity: 'Critical' | 'High' | 'Medium' | 'Silent';
+  type: string;
+  surface: string;
+  status: string;
 }
 
 export interface SubmissionData {
-  failurePattern: string; // "01: The Prompt Regression", etc.
-  whatWereYouBuilding: string[]; // ['Agent', 'RAG App', ...]
-  whatChanged: string[]; // ['Prompt', 'Model Version', ...]
+  failurePattern: string;
+  whatWereYouBuilding: string[];
+  whatChanged: string[];
   whatBroke: string;
   usersSeen: 'Yes' | 'No' | 'Not Sure' | '';
   howHandleToday: string;
