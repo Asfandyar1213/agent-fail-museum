@@ -32,7 +32,7 @@ export function CaseCard({ item, index, onSelect, isHighlighted = false }: CaseC
       id={`case-card-${item.id}`}
     >
       {/* Top row */}
-      <div className="flex justify-between items-center mb-3">
+      <div className="flex justify-between items-start mb-3">
         <span
           onMouseEnter={() => setBadgeHovered(true)}
           onMouseLeave={() => setBadgeHovered(false)}
@@ -42,10 +42,15 @@ export function CaseCard({ item, index, onSelect, isHighlighted = false }: CaseC
         >
           CASE {item.id}
         </span>
-        <span className="font-sans text-[12px] font-medium text-[var(--text-3)] group-hover:text-[var(--amber)] transition-colors duration-200 flex items-center gap-1">
-          I've seen this
-          <span className="transition-transform duration-200 group-hover:translate-x-[3px] inline-block">→</span>
-        </span>
+        <div className="flex flex-col items-end gap-1">
+          <span className="font-mono text-[9px] text-[var(--text-3)] tracking-[0.06em]">
+            {item.seenBy} builders reported this
+          </span>
+          <span className="font-sans text-[12px] font-medium text-[var(--text-3)] group-hover:text-[var(--amber)] transition-colors duration-200 flex items-center gap-1">
+            I've seen this
+            <span className="transition-transform duration-200 group-hover:translate-x-[3px] inline-block">→</span>
+          </span>
+        </div>
       </div>
 
       {/* Title */}

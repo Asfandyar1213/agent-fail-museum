@@ -14,6 +14,7 @@ export interface FailureCase {
   type: string;
   surface: string;
   status: string;
+  seenBy: number;
 }
 
 export interface SubmissionData {

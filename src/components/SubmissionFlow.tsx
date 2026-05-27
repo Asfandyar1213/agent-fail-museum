@@ -11,7 +11,7 @@ interface SubmissionFlowProps {
   curatedCasesOptions: string[];
   selectedCuratedId: string | null;
   onClearCuratedSelection: () => void;
-  formRef: React.RefObject<HTMLDivElement>;
+  onClose?: () => void;
 }
 
 const WHAT_BUILDING_OPTIONS = ['Agent', 'RAG App', 'Chatbot', 'Copilot', 'Automation', 'Research Project', 'Other'];
@@ -26,7 +26,7 @@ const POLL_OPTIONS = [
   { label: 'Other',                        caseId: null },
 ];
 
-export function SubmissionFlow({ curatedCasesOptions, selectedCuratedId, onClearCuratedSelection, formRef }: SubmissionFlowProps) {
+export function SubmissionFlow({ curatedCasesOptions, selectedCuratedId, onClearCuratedSelection, onClose }: SubmissionFlowProps) {
   const [formData, setFormData] = useState<SubmissionData>({
     failurePattern: '', whatWereYouBuilding: [], whatChanged: [],
     whatBroke: '', usersSeen: '', howHandleToday: '', followUp: false, nameEmail: ''
@@ -37,6 +37,8 @@ export function SubmissionFlow({ curatedCasesOptions, selectedCuratedId, onClear
   const [submitPhase, setSubmitPhase]       = useState<'idle' | 'fading-out' | 'completed'>('idle');
   const [drawLine, setDrawLine]             = useState(false);
   const [copied, setCopied]                 = useState(false);
+  const [isSubmitting, setIsSubmitting]     = useState(false);
+  const [caseId, setCaseId]                 = useState('');
 
   useEffect(() => {
     if (selectedCuratedId) {
@@ -51,10 +53,7 @@ export function SubmissionFlow({ curatedCasesOptions, selectedCuratedId, onClear
       const match = curatedCasesOptions.find(o => o.startsWith(`Case ${opt.caseId}`));
       if (match) setFormData(p => ({ ...p, failurePattern: match }));
     }
-    setTimeout(() => {
-      setPollCommitted(true);
-      document.getElementById('case-file-form')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }, 350);
+    setTimeout(() => setPollCommitted(true), 350);
   };
 
   const toggle = (field: 'whatWereYouBuilding' | 'whatChanged', opt: string) => {
@@ -64,12 +63,23 @@ export function SubmissionFlow({ curatedCasesOptions, selectedCuratedId, onClear
     });
   };
 
+  const getBadgeTier = (id: string) => {
+    const num = parseInt(id.replace('AFM-', ''), 10);
+    if (num <= 50)  return { label: 'FOUNDING CONTRIBUTOR', color: 'amber' };
+    if (num <= 200) return { label: 'EARLY CONTRIBUTOR',    color: 'amber' };
+    return               { label: 'ARCHIVE CONTRIBUTOR',   color: ''      };
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsSubmitting(true);
+    let newId = 'AFM-0048';
     try {
-      const prev = JSON.parse(localStorage.getItem('afm_failures') || '[]');
+      const prev = JSON.parse(localStorage.getItem('afm_failures') || '[]') as unknown[];
+      newId = `AFM-${String(47 + prev.length + 1).padStart(4, '0')}`;
       localStorage.setItem('afm_failures', JSON.stringify([...prev, formData]));
     } catch (_) {}
+    setCaseId(newId);
     try {
       const fd = new FormData();
       fd.append('access_key', '57e76241-afcc-4b26-8c53-c84d9350d5e4');
@@ -84,15 +94,20 @@ export function SubmissionFlow({ curatedCasesOptions, selectedCuratedId, onClear
       fd.append('Name & Email', isAnonymous ? 'Anonymous' : formData.nameEmail || 'Anonymous');
       await fetch('https://api.web3forms.com/submit', { method: 'POST', body: fd });
     } catch (_) {}
+    setIsSubmitting(false);
     setSubmitPhase('fading-out');
     setTimeout(() => { setSubmitPhase('completed'); setDrawLine(true); }, 400);
   };
 
   const handleReset = () => {
     setFormData({ failurePattern: '', whatWereYouBuilding: [], whatChanged: [], whatBroke: '', usersSeen: '', howHandleToday: '', followUp: false, nameEmail: '' });
-    setDrawLine(false); setSubmitPhase('idle'); setPollSelection(null); setPollCommitted(false); setIsAnonymous(false);
+    setDrawLine(false); setSubmitPhase('idle'); setPollSelection(null); setPollCommitted(false); setIsAnonymous(false); setCaseId('');
     onClearCuratedSelection();
-    document.getElementById('archive-section')?.scrollIntoView({ behavior: 'smooth' }) ?? window.scrollTo({ top: 0, behavior: 'smooth' });
+    if (onClose) {
+      onClose();
+    } else {
+      document.getElementById('archive-section')?.scrollIntoView({ behavior: 'smooth' }) ?? window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
   };
 
   const handleCopy = () => {
@@ -107,8 +122,22 @@ export function SubmissionFlow({ curatedCasesOptions, selectedCuratedId, onClear
   const changeTrigger   = formData.whatChanged.length > 0 ? formData.whatChanged.join(' · ') : 'System parameters modified';
 
   if (submitPhase === 'completed') {
+    const badge = getBadgeTier(caseId);
     return (
       <div className="space-y-6" id="post-submit-view">
+        {/* Case ID + Badge — the "unboxing" moment */}
+        <div className="p-5 border border-[rgba(47,125,92,0.4)] bg-[var(--emerald-dim)] rounded-[2px] flex items-start justify-between gap-4">
+          <div>
+            <p className="font-mono text-[9px] uppercase text-[var(--emerald)] tracking-[0.14em] mb-1">YOUR CASE NUMBER</p>
+            <span className="font-mono text-[32px] md:text-[38px] font-medium tracking-[0.04em]" style={{ color: 'var(--emerald)' }}>{caseId}</span>
+            <p className="font-sans text-[12px] text-[var(--text-2)] mt-1 leading-relaxed">Keep this. It's your permanent failure record.</p>
+          </div>
+          <div className="text-right flex-shrink-0">
+            <span className={`museum-tag ${badge.color}`}>{badge.label}</span>
+            <p className="font-sans text-[11px] text-[var(--text-3)] mt-1.5">Archive badge</p>
+          </div>
+        </div>
+
         <div className="space-y-2">
           <span className="font-mono text-[10px] uppercase text-[var(--emerald)] tracking-[0.16em]">REGRESSION TEST DRAFT CREATED</span>
           <h2 className="font-serif text-[26px] md:text-[30px] font-light text-[var(--text-0)] tracking-[-0.015em] leading-snug">
@@ -154,6 +183,7 @@ export function SubmissionFlow({ curatedCasesOptions, selectedCuratedId, onClear
           </div>
           <div className="divide-y divide-[rgba(47,125,92,0.1)]">
             {[
+              { label: 'CASE ID',        value: caseId },
               { label: 'PATTERN',        value: patternShort },
               { label: 'CHANGED',        value: changeTrigger },
               { label: 'BROKE',          value: failureBehavior },
@@ -176,7 +206,7 @@ export function SubmissionFlow({ curatedCasesOptions, selectedCuratedId, onClear
         </div>
 
         <p className="font-sans text-[13px] text-[var(--text-3)] leading-relaxed">
-          Save this. The best failures become public case files — with credit if you want it, anonymous if you don't.
+          Save this. The best failures become public case files. Credit if you want it, anonymous if you prefer.
         </p>
         <button onClick={handleReset} className="font-sans text-[13px] text-[var(--text-2)] hover:text-[var(--text-0)] font-medium hover:underline transition-colors bg-transparent border-none p-0 cursor-pointer">
           ← Back to the archive
@@ -186,7 +216,7 @@ export function SubmissionFlow({ curatedCasesOptions, selectedCuratedId, onClear
   }
 
   return (
-    <div ref={formRef} className="relative w-full max-w-[600px] mx-auto" id="submission-container">
+    <div className="relative w-full max-w-[600px] mx-auto" id="submission-container">
       <div className={`transition-all duration-400 ${submitPhase === 'fading-out' ? 'opacity-0 scale-[0.98] pointer-events-none' : 'opacity-100 scale-100'}`}>
 
         {/* ── Poll ── */}
@@ -208,7 +238,7 @@ export function SubmissionFlow({ curatedCasesOptions, selectedCuratedId, onClear
             </div>
             <button type="button" onClick={() => setPollCommitted(true)}
               className="font-sans text-[13px] text-[var(--text-3)] hover:text-[var(--text-1)] transition-colors bg-transparent border-none p-0 cursor-pointer">
-              Skip — open the full form ↓
+              Skip to full form ↓
             </button>
           </div>
         ) : pollSelection ? (
@@ -335,7 +365,7 @@ export function SubmissionFlow({ curatedCasesOptions, selectedCuratedId, onClear
               <div className={`overflow-hidden transition-all duration-400 ${formData.followUp ? 'max-h-[80px] opacity-100' : 'max-h-0 opacity-0'}`}>
                 <input id="name-email-field" type="text" value={formData.nameEmail}
                   onChange={e => setFormData(p => ({ ...p, nameEmail: e.target.value }))}
-                  placeholder="Name / email — leave blank for anonymous"
+                  placeholder="Name or email (optional, leave blank to stay anonymous)"
                   className="form-field mt-2" />
               </div>
             </div>
@@ -347,14 +377,23 @@ export function SubmissionFlow({ curatedCasesOptions, selectedCuratedId, onClear
           </p>
 
           {/* Submit */}
-          <button type="submit"
-            className="group relative w-full h-[54px] overflow-hidden rounded-[2px] font-sans text-[15px] font-semibold cursor-pointer bg-[var(--amber)] text-white hover:bg-[var(--amber-2)] transition-colors duration-200">
-            <span className="absolute inset-0 flex items-center justify-center transition-all duration-300 group-hover:-translate-y-full group-hover:opacity-0">
-              Turn This Failure Into a Test
-            </span>
-            <span className="absolute inset-0 flex items-center justify-center transition-all duration-300 translate-y-full opacity-0 group-hover:translate-y-0 group-hover:opacity-100">
-              Turn This Failure Into a Test →
-            </span>
+          <button type="submit" disabled={isSubmitting}
+            className="group relative w-full h-[54px] overflow-hidden rounded-[2px] font-sans text-[15px] font-semibold cursor-pointer bg-[var(--amber)] text-white hover:bg-[var(--amber-2)] transition-colors duration-200 disabled:opacity-70 disabled:cursor-not-allowed">
+            {isSubmitting ? (
+              <span className="absolute inset-0 flex items-center justify-center gap-2.5">
+                <span className="inline-block w-[18px] h-[18px] border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                Recording failure…
+              </span>
+            ) : (
+              <>
+                <span className="absolute inset-0 flex items-center justify-center transition-all duration-300 group-hover:-translate-y-full group-hover:opacity-0">
+                  Turn This Failure Into a Test
+                </span>
+                <span className="absolute inset-0 flex items-center justify-center transition-all duration-300 translate-y-full opacity-0 group-hover:translate-y-0 group-hover:opacity-100">
+                  Turn This Failure Into a Test →
+                </span>
+              </>
+            )}
           </button>
         </form>
       </div>

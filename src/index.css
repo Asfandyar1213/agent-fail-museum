@@ -469,3 +469,48 @@ input:checked + .slider:before {
 
 /* ── Dark section overrides ── */
 .dark-section .rule { background: var(--bg-dark-3); }
+
+/* ── Activity ticker ── */
+.ticker-strip {
+  height: 38px;
+  display: flex;
+  align-items: center;
+}
+.ticker-track {
+  display: flex;
+  align-items: center;
+  width: max-content;
+  animation: tickerScroll 45s linear infinite;
+}
+.ticker-track:hover { animation-play-state: paused; }
+.ticker-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 24px;
+  white-space: nowrap;
+}
+.ticker-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--emerald);
+  flex-shrink: 0;
+  animation: tickerPulse 2.4s ease-in-out infinite;
+}
+.ticker-sep {
+  display: inline-block;
+  width: 1px;
+  height: 12px;
+  background: var(--border);
+  margin-left: 14px;
+  flex-shrink: 0;
+}
+@keyframes tickerScroll {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+@keyframes tickerPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.35; transform: scale(0.7); }
+}

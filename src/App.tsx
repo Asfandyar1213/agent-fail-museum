@@ -10,6 +10,7 @@ import { ScrollReveal, ScrollLine } from './components/ScrollReveal';
 import { WordRevealText } from './components/WordRevealText';
 import { SubmissionFlow } from './components/SubmissionFlow';
 import { SearchExperience } from './components/SearchExperience';
+import { ActivityTicker } from './components/ActivityTicker';
 
 export default function App() {
   const [navScrolled, setNavScrolled]             = useState(false);
@@ -17,9 +18,11 @@ export default function App() {
   const [highlightedCaseId, setHighlightedCaseId] = useState<string | null>(null);
   const [mobileSearchActive, setMobileSearchActive] = useState(false);
   const [showMobileCta, setShowMobileCta]         = useState(false);
+  const [showModal, setShowModal]                  = useState(false);
+  const [submissionCount, setSubmissionCount]      = useState(0);
+  const BASE_SUBMISSIONS = 47;
 
-  const caseCardsRef  = useRef<HTMLDivElement>(null);
-  const submissionRef = useRef<HTMLDivElement>(null);
+  const caseCardsRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const onScroll = () => {
@@ -31,12 +34,32 @@ export default function App() {
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
-  const scrollToForm  = () => submissionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  useEffect(() => {
+    document.body.style.overflow = showModal ? 'hidden' : '';
+    return () => { document.body.style.overflow = ''; };
+  }, [showModal]);
+
+  useEffect(() => {
+    let stored = 0;
+    try { stored = (JSON.parse(localStorage.getItem('afm_failures') || '[]') as unknown[]).length; } catch (_) {}
+    const target = BASE_SUBMISSIONS + stored;
+    let current = 0;
+    const step = Math.max(1, Math.ceil(target / 36));
+    const id = setInterval(() => {
+      current = Math.min(current + step, target);
+      setSubmissionCount(current);
+      if (current >= target) clearInterval(id);
+    }, 22);
+    return () => clearInterval(id);
+  }, []);
+
+  const openModal  = () => setShowModal(true);
+  const closeModal = () => { setShowModal(false); setSelectedCaseId(null); };
   const scrollToCards = () => caseCardsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
   const handleCaseSelect = (caseId: string) => {
     setSelectedCaseId(caseId);
-    scrollToForm();
+    openModal();
   };
 
   const handleSearchCaseSelect = (caseId: string) => {
@@ -50,6 +73,13 @@ export default function App() {
     ...FAILURE_CASES.map(c => `Case ${c.id} : ${c.title}`),
     'Case 11: Something else'
   ];
+
+  const WEEKLY_BOUNTY = {
+    caseId: '03',
+    title: 'RAG Retrieval Drift',
+    description: 'Embedding and chunking changes are the most under-documented failure trigger. We need real examples before they repeat.',
+    hunters: 12,
+  };
 
   return (
     <div className="relative min-h-screen overflow-x-hidden" style={{ background: 'var(--bg-stone)', color: 'var(--text-0)' }}>
@@ -70,7 +100,7 @@ export default function App() {
             <div className="flex-1">
               <SearchExperience
                 onSelectCase={id => { handleSearchCaseSelect(id); setMobileSearchActive(false); }}
-                openSubmitForm={() => { scrollToForm(); setMobileSearchActive(false); }}
+                openSubmitForm={() => { openModal(); setMobileSearchActive(false); }}
               />
             </div>
             <button onClick={() => setMobileSearchActive(false)}
@@ -97,7 +127,7 @@ export default function App() {
 
             <div className="flex items-center gap-3">
               <div className="hidden md:block">
-                <SearchExperience onSelectCase={handleSearchCaseSelect} openSubmitForm={scrollToForm} />
+                <SearchExperience onSelectCase={handleSearchCaseSelect} openSubmitForm={openModal} />
               </div>
               <button onClick={() => setMobileSearchActive(true)}
                 className="md:hidden p-2 text-[var(--text-2)] hover:text-[var(--text-0)] cursor-pointer" aria-label="Search">
@@ -105,8 +135,8 @@ export default function App() {
                   <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
                 </svg>
               </button>
-              <button onClick={scrollToForm}
-                className="font-sans text-[13px] font-semibold text-white bg-[var(--amber)] hover:bg-[var(--amber-2)] px-4 md:px-5 py-[8px] rounded-[2px] transition-colors duration-200 cursor-pointer whitespace-nowrap">
+              <button onClick={openModal}
+                className="hidden md:inline-flex font-sans text-[13px] font-semibold text-white bg-[var(--amber)] hover:bg-[var(--amber-2)] px-5 py-[8px] rounded-[2px] transition-colors duration-200 cursor-pointer whitespace-nowrap">
                 Submit a failure
               </button>
             </div>
@@ -142,16 +172,31 @@ export default function App() {
             startDelay={150}
           />
 
+          {/* Animated counter */}
+          <div className="reveal visible" style={{ '--delay': '600ms' } as React.CSSProperties}>
+            <div className="flex items-center justify-center gap-8 md:gap-12">
+              <div className="text-center">
+                <span className="font-serif text-[clamp(30px,5vw,52px)] font-light text-[var(--text-0)] tracking-[-0.025em] tabular-nums leading-none">{submissionCount}</span>
+                <p className="font-mono text-[9px] uppercase text-[var(--text-3)] tracking-[0.16em] mt-2">Failures documented</p>
+              </div>
+              <div className="w-[1px] h-12 bg-[var(--border)]" />
+              <div className="text-center">
+                <span className="font-serif text-[clamp(30px,5vw,52px)] font-light tracking-[-0.025em] leading-none" style={{ color: 'var(--emerald)' }}>0</span>
+                <p className="font-mono text-[9px] uppercase text-[var(--text-3)] tracking-[0.16em] mt-2">Happened twice</p>
+              </div>
+            </div>
+          </div>
+
           {/* Subheadline */}
           <div className="reveal visible" style={{ '--delay': '700ms' } as React.CSSProperties}>
-            <p className="font-sans text-[clamp(15px,1.4vw,17px)] text-[var(--text-2)] leading-[1.8] max-w-[520px] text-center">
-              Every prompt, model, tool, retrieval, dataset, or memory change can bring old failures back. Pick a failure you've seen, add one sentence, and turn it into a regression test draft.
+            <p className="font-sans text-[clamp(15px,1.4vw,17px)] text-[var(--text-2)] leading-[1.8] max-w-[500px] text-center">
+              The builders who document failures are the ones who don't repeat them. Pick the pattern you've seen. One sentence is enough. Walk away with a regression test draft.
             </p>
           </div>
 
           {/* CTAs */}
           <div className="reveal visible flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full max-w-[440px] sm:max-w-none justify-center" style={{ '--delay': '900ms' } as React.CSSProperties}>
-            <button onClick={scrollToForm}
+            <button onClick={openModal}
               className="group relative h-[50px] px-8 min-w-[190px] bg-[var(--amber)] text-white rounded-[2px] font-sans text-[15px] font-semibold overflow-hidden cursor-pointer hover:bg-[var(--amber-2)] transition-colors duration-200">
               <span className="absolute inset-0 flex items-center justify-center transition-all duration-300 group-hover:-translate-y-full group-hover:opacity-0">I've seen a failure</span>
               <span className="absolute inset-0 flex items-center justify-center transition-all duration-300 translate-y-full opacity-0 group-hover:translate-y-0 group-hover:opacity-100">I've seen a failure →</span>
@@ -162,11 +207,40 @@ export default function App() {
             </button>
           </div>
 
-          {/* Trust line */}
-          <div className="reveal visible" style={{ '--delay': '1050ms' } as React.CSSProperties}>
-            <p className="font-sans text-[13px] text-[var(--text-3)] text-center">
+          {/* Social proof + trust */}
+          <div className="reveal visible space-y-1.5" style={{ '--delay': '1050ms' } as React.CSSProperties}>
+            <p className="font-sans text-[13px] font-medium text-[var(--text-1)] text-center">
+              Join {submissionCount} builders who documented a failure.
+            </p>
+            <p className="font-sans text-[12px] text-[var(--text-3)] text-center">
               One sentence is enough.&nbsp;&nbsp;Anonymous by default.&nbsp;&nbsp;Credit only if you want it.
             </p>
+          </div>
+
+          {/* Test draft preview — what they walk away with */}
+          <div className="reveal visible w-full max-w-[480px]" style={{ '--delay': '1200ms' } as React.CSSProperties}>
+            <div className="border border-[var(--border)] bg-[var(--bg-card)] rounded-[2px] overflow-hidden text-left">
+              <div className="flex items-center justify-between px-4 py-2.5 border-b border-[var(--border)]" style={{ background: 'var(--bg-card-2)' }}>
+                <span className="font-mono text-[8px] uppercase text-[var(--emerald)] tracking-[0.14em]">WHAT YOU WALK AWAY WITH</span>
+                <span className="museum-tag emerald">Free · Instant</span>
+              </div>
+              <div className="px-4 py-3 divide-y divide-[var(--border)]">
+                {([
+                  { label: 'REPLAY INPUT',   value: 'Your workflow → replayable',  em: false },
+                  { label: 'PASS/FAIL RULE', value: 'Output matches baseline',     em: true  },
+                  { label: 'RELEASE GATE',   value: 'Before every deploy',         em: true  },
+                  { label: 'STATUS',         value: 'Draft created',               em: true  },
+                ] as { label: string; value: string; em: boolean }[]).map(({ label, value, em }) => (
+                  <div key={label} className="flex justify-between items-baseline py-[6px] first:pt-0 last:pb-0">
+                    <span className="font-mono text-[8px] uppercase text-[var(--text-4)] tracking-[0.08em]">{label}</span>
+                    <span className={`font-sans text-[11px] ${em ? 'text-[var(--emerald)] font-medium' : 'text-[var(--text-3)]'}`}>{value}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="px-4 py-2 border-t border-[var(--border)]" style={{ background: 'var(--bg-card-2)' }}>
+                <p className="font-sans text-[11px] text-[var(--text-3)]">One sentence from you → a regression test draft back. No account needed.</p>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -176,6 +250,9 @@ export default function App() {
           <span className="font-mono text-[8px] uppercase text-[var(--text-4)] tracking-[0.15em] mt-2">SCROLL</span>
         </div>
       </header>
+
+      {/* ══ ACTIVITY TICKER ══ */}
+      <ActivityTicker />
 
       {/* ══ THREE-STEP STRIP ══ */}
       <section style={{ background: 'var(--bg-card)', borderTop: '1px solid var(--border)', borderBottom: '1px solid var(--border)' }}
@@ -332,21 +409,6 @@ export default function App() {
         </div>
       </section>
 
-      {/* ══ FORM ══ */}
-      <section className="px-5 md:px-[8vw] xl:px-[120px] py-12 md:py-16"
-        style={{ background: 'var(--bg-stone)', borderTop: '1px solid var(--border)' }}>
-        <div className="max-w-[1200px] mx-auto">
-          <ScrollReveal>
-            <SubmissionFlow
-              curatedCasesOptions={dropdownOptions}
-              selectedCuratedId={selectedCaseId}
-              onClearCuratedSelection={() => setSelectedCaseId(null)}
-              formRef={submissionRef}
-            />
-          </ScrollReveal>
-        </div>
-      </section>
-
       {/* ══ DARK: MISSION (single dark section) ══ */}
       <section className="px-5 md:px-[8vw] xl:px-[120px] py-12 md:py-20"
         style={{ background: 'var(--bg-dark)' }}>
@@ -394,23 +456,32 @@ export default function App() {
           </ScrollReveal>
 
           <ScrollReveal delay={100} className="space-y-4">
-            <span className="font-mono text-[10px] uppercase tracking-[0.16em]" style={{ color: 'var(--amber)' }}>CURRENT FAILURE BOUNTY</span>
-            <h3 className="font-serif text-[20px] md:text-[22px] font-normal text-[var(--text-0)] leading-snug">
-              What we're looking for right now.
-            </h3>
-            <p className="font-sans text-[15px] text-[var(--text-2)] leading-[1.8]">
-              Real examples where a prompt, model, RAG, tool, dataset, or memory change broke something that previously worked.
-            </p>
-            <p className="font-sans text-[14px] text-[var(--text-3)] leading-relaxed">
-              Your failure might be the test another builder needed. Small failures count. One sentence is enough.
-            </p>
-            <button onClick={scrollToForm}
+            <div className="flex items-center gap-3">
+              <span className="font-mono text-[10px] uppercase tracking-[0.16em]" style={{ color: 'var(--amber)' }}>THIS WEEK'S BOUNTY</span>
+              <span className="status-pill amber"><span className="dot" />Active</span>
+            </div>
+            <div className="p-4 border border-[rgba(184,135,59,0.3)] bg-[var(--amber-dim)] rounded-[2px] space-y-2">
+              <span className="font-mono text-[9px] uppercase text-[var(--amber)] tracking-[0.1em]">CASE {WEEKLY_BOUNTY.caseId}</span>
+              <h3 className="font-serif text-[18px] md:text-[20px] font-normal text-[var(--text-0)] leading-snug">{WEEKLY_BOUNTY.title}</h3>
+              <p className="font-sans text-[13px] text-[var(--text-2)] leading-relaxed pt-0.5">{WEEKLY_BOUNTY.description}</p>
+            </div>
+            <div className="flex items-center gap-3 text-[13px]">
+              <span className="font-sans text-[var(--text-3)]">
+                <span className="font-medium text-[var(--text-1)]">{WEEKLY_BOUNTY.hunters} builders</span> hunting this pattern
+              </span>
+              <span style={{ color: 'var(--border)' }}>·</span>
+              <span className="font-sans text-[var(--text-3)]">Resets Sunday</span>
+            </div>
+            <button onClick={() => { setSelectedCaseId(WEEKLY_BOUNTY.caseId); openModal(); }}
               className="inline-flex items-center gap-2 font-sans text-[14px] font-medium border rounded-[2px] px-5 py-3 transition-all duration-200 cursor-pointer"
               style={{ borderColor: 'rgba(184,135,59,0.4)', color: 'var(--amber)', background: 'var(--amber-dim)' }}
               onMouseEnter={e => (e.currentTarget.style.background = 'var(--amber-sub)')}
               onMouseLeave={e => (e.currentTarget.style.background = 'var(--amber-dim)')}>
-              Submit this pattern →
+              Submit a {WEEKLY_BOUNTY.title} failure →
             </button>
+            <p className="font-sans text-[12px] text-[var(--text-3)]">
+              Your sentence prevents the next builder from hitting this blind. Anonymous is fine.
+            </p>
           </ScrollReveal>
         </div>
       </section>
@@ -424,7 +495,7 @@ export default function App() {
               <div className="space-y-1 max-w-[480px]">
                 <span className="font-mono text-[10px] uppercase text-[var(--text-3)] tracking-[0.16em]">CONTRIBUTORS</span>
                 <p className="font-sans text-[14px] text-[var(--text-2)] leading-relaxed mt-1">
-                  Builders who contribute and opt in will be credited here. Anonymous is always allowed. Good builders don't hide failures — they make them impossible to repeat.
+                  Builders who contribute and opt in will be credited here. Anonymous is always allowed. Good builders don't hide failures. They make them impossible to repeat.
                 </p>
               </div>
               <div className="flex flex-wrap gap-2 flex-shrink-0">
@@ -464,13 +535,45 @@ export default function App() {
       </footer>
 
       {/* ══ STICKY MOBILE CTA ══ */}
-      <div className={`sticky-mobile-cta transition-opacity duration-300 ${showMobileCta ? 'visible opacity-100' : 'opacity-0 pointer-events-none'}`}>
-        <button onClick={scrollToForm}
+      <div className={`sticky-mobile-cta transition-opacity duration-300 ${showMobileCta && !showModal ? 'visible opacity-100' : 'opacity-0 pointer-events-none'}`}>
+        <button onClick={openModal}
           className="w-full h-[50px] rounded-[2px] font-sans text-[15px] font-semibold text-white cursor-pointer transition-colors duration-200"
           style={{ background: 'var(--amber)' }}>
           Submit a failure
         </button>
       </div>
+
+      {/* ══ SUBMIT MODAL ══ */}
+      {showModal && (
+        <div className="fixed inset-0 z-[100] flex flex-col" style={{ background: 'var(--bg-stone)' }}>
+          <div
+            className="flex items-center justify-between px-5 md:px-10 h-[58px] flex-shrink-0 border-b border-[var(--border)]"
+            style={{ background: 'var(--bg-card)' }}
+          >
+            <span className="font-mono text-[10px] uppercase text-[var(--text-3)] tracking-[0.16em]">OPEN A CASE FILE</span>
+            <button
+              onClick={closeModal}
+              className="flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-[0.06em] text-[var(--text-2)] hover:text-[var(--text-0)] transition-colors cursor-pointer bg-transparent border-none p-2"
+              aria-label="Close"
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
+              Close
+            </button>
+          </div>
+          <div className="flex-1 overflow-y-auto px-5 md:px-10 py-8 md:py-12">
+            <div className="max-w-[600px] mx-auto">
+              <SubmissionFlow
+                curatedCasesOptions={dropdownOptions}
+                selectedCuratedId={selectedCaseId}
+                onClearCuratedSelection={() => setSelectedCaseId(null)}
+                onClose={closeModal}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

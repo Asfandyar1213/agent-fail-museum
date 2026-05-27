@@ -16,7 +16,8 @@ export const FAILURE_CASES: FailureCase[] = [
     severity: "Silent",
     type: "Regression",
     surface: "Prompt",
-    status: "Common"
+    status: "Common",
+    seenBy: 124,
   },
   {
     id: "02",
@@ -28,7 +29,8 @@ export const FAILURE_CASES: FailureCase[] = [
     severity: "High",
     type: "Regression",
     surface: "Model",
-    status: "Common"
+    status: "Common",
+    seenBy: 89,
   },
   {
     id: "03",
@@ -40,7 +42,8 @@ export const FAILURE_CASES: FailureCase[] = [
     severity: "High",
     type: "Drift",
     surface: "Retrieval",
-    status: "Common"
+    status: "Common",
+    seenBy: 67,
   },
   {
     id: "04",
@@ -52,7 +55,8 @@ export const FAILURE_CASES: FailureCase[] = [
     severity: "Silent",
     type: "Integration",
     surface: "Tool",
-    status: "Common"
+    status: "Common",
+    seenBy: 43,
   },
   {
     id: "05",
@@ -64,7 +68,8 @@ export const FAILURE_CASES: FailureCase[] = [
     severity: "Critical",
     type: "Safety",
     surface: "Guardrail",
-    status: "Rare"
+    status: "Rare",
+    seenBy: 18,
   },
   {
     id: "06",
@@ -76,7 +81,8 @@ export const FAILURE_CASES: FailureCase[] = [
     severity: "High",
     type: "Regression",
     surface: "Grounding",
-    status: "Common"
+    status: "Common",
+    seenBy: 76,
   },
   {
     id: "07",
@@ -88,7 +94,8 @@ export const FAILURE_CASES: FailureCase[] = [
     severity: "Medium",
     type: "Routing",
     surface: "Orchestration",
-    status: "Common"
+    status: "Common",
+    seenBy: 31,
   },
   {
     id: "08",
@@ -100,7 +107,8 @@ export const FAILURE_CASES: FailureCase[] = [
     severity: "High",
     type: "State",
     surface: "Memory",
-    status: "Common"
+    status: "Common",
+    seenBy: 52,
   },
   {
     id: "09",
@@ -112,7 +120,8 @@ export const FAILURE_CASES: FailureCase[] = [
     severity: "High",
     type: "Data",
     surface: "Corpus",
-    status: "Common"
+    status: "Common",
+    seenBy: 38,
   },
   {
     id: "10",
@@ -124,6 +133,7 @@ export const FAILURE_CASES: FailureCase[] = [
     severity: "Critical",
     type: "Control",
     surface: "Orchestration",
-    status: "Rare"
+    status: "Rare",
+    seenBy: 29,
   }
 ];

@@ -9,3 +9,4 @@ coverage/
 .vercel
 auto-deploy.ts
 setup-repo.ts
+.claude/
