@@ -52,13 +52,11 @@ export default function App() {
     const BASE = 47;
     let cancelled = false;
     supabase
-      .from('submissions')
-      .select('id', { count: 'exact', head: true })
-      .eq('verified', true)
-      .then(({ count, error }) => {
-        console.log('[AFM] Supabase response — count:', count, 'error:', error);
+      .rpc('get_verified_count')
+      .then(({ data, error }) => {
+        console.log('[AFM] Supabase response — count:', data, 'error:', error);
         if (cancelled) return;
-        const target = BASE + (count ?? 0);
+        const target = BASE + (data ?? 0);
         console.log('[AFM] Final display target:', target);
         let current = 0;
         const step = Math.max(1, Math.ceil(target / 36));
