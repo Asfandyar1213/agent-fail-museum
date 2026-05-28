@@ -11,6 +11,7 @@ import { WordRevealText } from './components/WordRevealText';
 import { SubmissionFlow } from './components/SubmissionFlow';
 import { SearchExperience } from './components/SearchExperience';
 import { ActivityTicker } from './components/ActivityTicker';
+import { supabase } from './lib/supabase';
 
 export default function App() {
   const [navScrolled, setNavScrolled]             = useState(false);
@@ -20,7 +21,7 @@ export default function App() {
   const [showMobileCta, setShowMobileCta]         = useState(false);
   const [showModal, setShowModal]                  = useState(false);
   const [submissionCount, setSubmissionCount]      = useState(0);
-  const BASE_SUBMISSIONS = 47;
+  const [source, setSource]                        = useState<string | undefined>(undefined);
 
   const caseCardsRef = useRef<HTMLDivElement>(null);
 
@@ -39,18 +40,33 @@ export default function App() {
     return () => { document.body.style.overflow = ''; };
   }, [showModal]);
 
+  // Read ?ref= URL param for source tracking
   useEffect(() => {
-    let stored = 0;
-    try { stored = (JSON.parse(localStorage.getItem('afm_failures') || '[]') as unknown[]).length; } catch (_) {}
-    const target = BASE_SUBMISSIONS + stored;
-    let current = 0;
-    const step = Math.max(1, Math.ceil(target / 36));
-    const id = setInterval(() => {
-      current = Math.min(current + step, target);
-      setSubmissionCount(current);
-      if (current >= target) clearInterval(id);
-    }, 22);
-    return () => clearInterval(id);
+    const params = new URLSearchParams(window.location.search);
+    const ref = params.get('ref');
+    if (ref) setSource(ref);
+  }, []);
+
+  // Fetch verified submission count from Supabase, animate counter
+  useEffect(() => {
+    let cancelled = false;
+    supabase
+      .from('submissions')
+      .select('id', { count: 'exact', head: true })
+      .eq('verified', true)
+      .then(({ count }) => {
+        if (cancelled) return;
+        const target = count ?? 0;
+        if (target === 0) { setSubmissionCount(0); return; }
+        let current = 0;
+        const step = Math.max(1, Math.ceil(target / 36));
+        const id = setInterval(() => {
+          current = Math.min(current + step, target);
+          setSubmissionCount(current);
+          if (current >= target) clearInterval(id);
+        }, 22);
+      });
+    return () => { cancelled = true; };
   }, []);
 
   const openModal  = () => setShowModal(true);
@@ -569,6 +585,7 @@ export default function App() {
                 selectedCuratedId={selectedCaseId}
                 onClearCuratedSelection={() => setSelectedCaseId(null)}
                 onClose={closeModal}
+                source={source}
               />
             </div>
           </div>

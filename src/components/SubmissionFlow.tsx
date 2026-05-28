@@ -3,15 +3,17 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { SubmissionData } from '../types';
 import { CustomDropdown } from './CustomDropdown';
+import { supabase } from '../lib/supabase';
 
 interface SubmissionFlowProps {
   curatedCasesOptions: string[];
   selectedCuratedId: string | null;
   onClearCuratedSelection: () => void;
   onClose?: () => void;
+  source?: string;
 }
 
 const WHAT_BUILDING_OPTIONS = ['Agent', 'RAG App', 'Chatbot', 'Copilot', 'Automation', 'Research Project', 'Other'];
@@ -26,7 +28,7 @@ const POLL_OPTIONS = [
   { label: 'Other',                        caseId: null },
 ];
 
-export function SubmissionFlow({ curatedCasesOptions, selectedCuratedId, onClearCuratedSelection, onClose }: SubmissionFlowProps) {
+export function SubmissionFlow({ curatedCasesOptions, selectedCuratedId, onClearCuratedSelection, onClose, source }: SubmissionFlowProps) {
   const [formData, setFormData] = useState<SubmissionData>({
     failurePattern: '', whatWereYouBuilding: [], whatChanged: [],
     whatBroke: '', usersSeen: '', howHandleToday: '', followUp: false, nameEmail: ''
@@ -39,6 +41,10 @@ export function SubmissionFlow({ curatedCasesOptions, selectedCuratedId, onClear
   const [copied, setCopied]                 = useState(false);
   const [isSubmitting, setIsSubmitting]     = useState(false);
   const [caseId, setCaseId]                 = useState('');
+  const [descError, setDescError]           = useState('');
+
+  // Honeypot field — must stay empty; bots fill it
+  const honeypotRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (selectedCuratedId) {
@@ -72,7 +78,26 @@ export function SubmissionFlow({ curatedCasesOptions, selectedCuratedId, onClear
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Honeypot check — silently reject spam
+    if (honeypotRef.current?.value) {
+      setSubmitPhase('fading-out');
+      setTimeout(() => { setSubmitPhase('completed'); setDrawLine(true); }, 400);
+      return;
+    }
+
+    // Description validation
+    const desc = formData.whatBroke.trim();
+    if (desc.length < 10) {
+      setDescError('One sentence is enough. What changed and what broke?');
+      document.getElementById('what-broke-field')?.focus();
+      return;
+    }
+    setDescError('');
+
     setIsSubmitting(true);
+
+    // Generate case ID
     let newId = 'AFM-0048';
     try {
       const prev = JSON.parse(localStorage.getItem('afm_failures') || '[]') as unknown[];
@@ -80,20 +105,24 @@ export function SubmissionFlow({ curatedCasesOptions, selectedCuratedId, onClear
       localStorage.setItem('afm_failures', JSON.stringify([...prev, formData]));
     } catch (_) {}
     setCaseId(newId);
+
+    // Submit to Supabase
     try {
-      const fd = new FormData();
-      fd.append('access_key', '57e76241-afcc-4b26-8c53-c84d9350d5e4');
-      fd.append('subject', `Failure Pattern: ${formData.failurePattern || 'General'}`);
-      fd.append('Failure Pattern', formData.failurePattern || 'N/A');
-      fd.append('What Were You Building', formData.whatWereYouBuilding.join(', ') || 'N/A');
-      fd.append('What Changed', formData.whatChanged.join(', ') || 'N/A');
-      fd.append('Describe The Failure', formData.whatBroke || 'N/A');
-      fd.append('Did Users Experience This', formData.usersSeen || 'N/A');
-      fd.append('How Do You Catch This', formData.howHandleToday || 'N/A');
-      fd.append('Can We Follow Up', formData.followUp ? 'Yes' : 'No');
-      fd.append('Name & Email', isAnonymous ? 'Anonymous' : formData.nameEmail || 'Anonymous');
-      await fetch('https://api.web3forms.com/submit', { method: 'POST', body: fd });
+      await supabase.from('submissions').insert({
+        failure_pattern:    formData.failurePattern || null,
+        what_building:      formData.whatWereYouBuilding.join(', ') || null,
+        what_changed:       formData.whatChanged.join(', ') || null,
+        description:        desc,
+        users_seen:         formData.usersSeen || null,
+        how_catch_today:    formData.howHandleToday || null,
+        follow_up:          formData.followUp,
+        email:              isAnonymous ? null : (formData.nameEmail || null),
+        case_id:            newId,
+        source:             source || null,
+        verified:           false,
+      });
     } catch (_) {}
+
     setIsSubmitting(false);
     setSubmitPhase('fading-out');
     setTimeout(() => { setSubmitPhase('completed'); setDrawLine(true); }, 400);
@@ -101,7 +130,7 @@ export function SubmissionFlow({ curatedCasesOptions, selectedCuratedId, onClear
 
   const handleReset = () => {
     setFormData({ failurePattern: '', whatWereYouBuilding: [], whatChanged: [], whatBroke: '', usersSeen: '', howHandleToday: '', followUp: false, nameEmail: '' });
-    setDrawLine(false); setSubmitPhase('idle'); setPollSelection(null); setPollCommitted(false); setIsAnonymous(false); setCaseId('');
+    setDrawLine(false); setSubmitPhase('idle'); setPollSelection(null); setPollCommitted(false); setIsAnonymous(false); setCaseId(''); setDescError('');
     onClearCuratedSelection();
     if (onClose) {
       onClose();
@@ -209,7 +238,7 @@ export function SubmissionFlow({ curatedCasesOptions, selectedCuratedId, onClear
           Save this. The best failures become public case files. Credit if you want it, anonymous if you prefer.
         </p>
         <button onClick={handleReset} className="font-sans text-[13px] text-[var(--text-2)] hover:text-[var(--text-0)] font-medium hover:underline transition-colors bg-transparent border-none p-0 cursor-pointer">
-          ← Back to the archive
+          Back to the archive
         </button>
       </div>
     );
@@ -217,9 +246,20 @@ export function SubmissionFlow({ curatedCasesOptions, selectedCuratedId, onClear
 
   return (
     <div className="relative w-full max-w-[600px] mx-auto" id="submission-container">
+      {/* Honeypot field — hidden from real users, bots fill it */}
+      <input
+        ref={honeypotRef}
+        type="text"
+        name="website"
+        tabIndex={-1}
+        aria-hidden="true"
+        style={{ position: 'absolute', left: '-9999px', opacity: 0, height: 0, width: 0 }}
+        autoComplete="off"
+      />
+
       <div className={`transition-all duration-400 ${submitPhase === 'fading-out' ? 'opacity-0 scale-[0.98] pointer-events-none' : 'opacity-100 scale-100'}`}>
 
-        {/* ── Poll ── */}
+        {/* Poll */}
         {!pollCommitted ? (
           <div className="mb-10 space-y-5">
             <div className="space-y-2">
@@ -238,7 +278,7 @@ export function SubmissionFlow({ curatedCasesOptions, selectedCuratedId, onClear
             </div>
             <button type="button" onClick={() => setPollCommitted(true)}
               className="font-sans text-[13px] text-[var(--text-3)] hover:text-[var(--text-1)] transition-colors bg-transparent border-none p-0 cursor-pointer">
-              Skip to full form ↓
+              Skip to full form
             </button>
           </div>
         ) : pollSelection ? (
@@ -251,7 +291,7 @@ export function SubmissionFlow({ curatedCasesOptions, selectedCuratedId, onClear
           </div>
         ) : null}
 
-        {/* ── Reward preview ── */}
+        {/* Reward preview */}
         {pollCommitted && (
           <div className="mb-8 p-5 border border-[var(--border)] bg-[var(--bg-card)] rounded-[2px] space-y-2">
             <span className="font-mono text-[9px] uppercase text-[var(--olive)] tracking-[0.12em]">WHAT YOU GET BACK</span>
@@ -262,7 +302,7 @@ export function SubmissionFlow({ curatedCasesOptions, selectedCuratedId, onClear
           </div>
         )}
 
-        {/* ── Form ── */}
+        {/* Form */}
         <form id="case-file-form" onSubmit={handleSubmit} className="space-y-7">
           <div className="space-y-2">
             <span className="font-mono text-[10px] uppercase text-[var(--text-3)] tracking-[0.12em]">OPEN A CASE FILE</span>
@@ -325,11 +365,14 @@ export function SubmissionFlow({ curatedCasesOptions, selectedCuratedId, onClear
 
           {/* Describe */}
           <div className="space-y-2">
-            <label htmlFor="what-broke-field" className="block font-mono text-[10px] uppercase text-[var(--text-3)] tracking-[0.1em]">DESCRIBE THE FAILURE</label>
+            <label htmlFor="what-broke-field" className="block font-mono text-[10px] uppercase text-[var(--text-3)] tracking-[0.1em]">DESCRIBE THE FAILURE <span className="text-[var(--amber)]">*</span></label>
             <textarea id="what-broke-field" rows={4} value={formData.whatBroke}
-              onChange={e => setFormData(p => ({ ...p, whatBroke: e.target.value }))}
+              onChange={e => { setFormData(p => ({ ...p, whatBroke: e.target.value })); if (descError) setDescError(''); }}
               placeholder="What was it supposed to do, and what did it do instead? One sentence is enough."
-              className="form-field" />
+              className={`form-field ${descError ? 'border-red-400' : ''}`} />
+            {descError && (
+              <p className="font-sans text-[12px] text-red-400 leading-relaxed">{descError}</p>
+            )}
           </div>
 
           {/* Did users experience this */}
@@ -352,7 +395,7 @@ export function SubmissionFlow({ curatedCasesOptions, selectedCuratedId, onClear
               className="form-field" />
           </div>
 
-          {/* Follow-up */}
+          {/* Follow-up — email only, no company name */}
           {!isAnonymous && (
             <div className="space-y-3">
               <div className="flex items-center justify-between">
@@ -363,9 +406,9 @@ export function SubmissionFlow({ curatedCasesOptions, selectedCuratedId, onClear
                 </label>
               </div>
               <div className={`overflow-hidden transition-all duration-400 ${formData.followUp ? 'max-h-[80px] opacity-100' : 'max-h-0 opacity-0'}`}>
-                <input id="name-email-field" type="text" value={formData.nameEmail}
+                <input id="name-email-field" type="email" value={formData.nameEmail}
                   onChange={e => setFormData(p => ({ ...p, nameEmail: e.target.value }))}
-                  placeholder="Name or email (optional, leave blank to stay anonymous)"
+                  placeholder="Email (optional)"
                   className="form-field mt-2" />
               </div>
             </div>
@@ -373,7 +416,7 @@ export function SubmissionFlow({ curatedCasesOptions, selectedCuratedId, onClear
 
           {/* Privacy */}
           <p className="font-sans text-[12px] text-[var(--text-3)] leading-relaxed border border-[var(--border)] rounded-[2px] px-4 py-3 bg-[var(--bg-card)]">
-            Anonymous by default. We will never publish your name, company, or project details without permission.
+            Anonymous by default. We will never publish your name or project details without permission.
           </p>
 
           {/* Submit */}
@@ -382,7 +425,7 @@ export function SubmissionFlow({ curatedCasesOptions, selectedCuratedId, onClear
             {isSubmitting ? (
               <span className="absolute inset-0 flex items-center justify-center gap-2.5">
                 <span className="inline-block w-[18px] h-[18px] border-2 border-white/40 border-t-white rounded-full animate-spin" />
-                Recording failure…
+                Recording failure...
               </span>
             ) : (
               <>
@@ -390,7 +433,7 @@ export function SubmissionFlow({ curatedCasesOptions, selectedCuratedId, onClear
                   Turn This Failure Into a Test
                 </span>
                 <span className="absolute inset-0 flex items-center justify-center transition-all duration-300 translate-y-full opacity-0 group-hover:translate-y-0 group-hover:opacity-100">
-                  Turn This Failure Into a Test →
+                  Turn This Failure Into a Test
                 </span>
               </>
             )}
