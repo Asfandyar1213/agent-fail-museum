@@ -55,9 +55,11 @@ export default function App() {
       .from('submissions')
       .select('id', { count: 'exact', head: true })
       .eq('verified', true)
-      .then(({ count }) => {
+      .then(({ count, error }) => {
+        console.log('[AFM] Supabase response — count:', count, 'error:', error);
         if (cancelled) return;
         const target = BASE + (count ?? 0);
+        console.log('[AFM] Final display target:', target);
         let current = 0;
         const step = Math.max(1, Math.ceil(target / 36));
         const id = setInterval(() => {
