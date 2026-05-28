@@ -53,11 +53,9 @@ export default function App() {
     let cancelled = false;
     supabase
       .rpc('get_verified_count')
-      .then(({ data, error }) => {
-        console.log('[AFM] Supabase response — count:', data, 'error:', error);
+      .then(({ data, error: _ }) => {
         if (cancelled) return;
         const target = BASE + (data ?? 0);
-        console.log('[AFM] Final display target:', target);
         let current = 0;
         const step = Math.max(1, Math.ceil(target / 36));
         const id = setInterval(() => {
