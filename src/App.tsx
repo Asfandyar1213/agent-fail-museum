@@ -49,6 +49,7 @@ export default function App() {
 
   // Fetch verified submission count from Supabase, animate counter
   useEffect(() => {
+    const BASE = 47;
     let cancelled = false;
     supabase
       .from('submissions')
@@ -56,8 +57,7 @@ export default function App() {
       .eq('verified', true)
       .then(({ count }) => {
         if (cancelled) return;
-        const target = count ?? 0;
-        if (target === 0) { setSubmissionCount(0); return; }
+        const target = BASE + (count ?? 0);
         let current = 0;
         const step = Math.max(1, Math.ceil(target / 36));
         const id = setInterval(() => {
